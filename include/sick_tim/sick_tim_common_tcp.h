@@ -49,6 +49,8 @@ class SickTimCommonTcp : public SickTimCommon
 {
 public:
   SickTimCommonTcp(const std::string &hostname, const std::string &port, int &timelimit, AbstractParser* parser);
+  // Gets topic name
+  SickTimCommonTcp(const std::string &hostname, const std::string &port, int &timelimit, AbstractParser* parser, const std::string& topic_name);
   virtual ~SickTimCommonTcp();
 
 protected:

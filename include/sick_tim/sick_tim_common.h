@@ -64,9 +64,13 @@ class SickTimCommon
 {
 public:
   SickTimCommon(AbstractParser* parser);
+  // Gets topic name
+  SickTimCommon(AbstractParser* parser, const std::string& topic_name);
+
   virtual ~SickTimCommon();
   virtual int init();
   virtual int loopOnce();
+  virtual int loopOnce(sick_tim::SickTimConfig& config_data) = 0;
   void check_angle_range(SickTimConfig &conf);
   void update_config(sick_tim::SickTimConfig &new_config, uint32_t level = 0);
 
@@ -130,6 +134,7 @@ private:
 
   // Parser
   AbstractParser* parser_;
+
 };
 
 } /* namespace sick_tim */

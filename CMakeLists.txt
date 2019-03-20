@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(sick_tim)
 
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++11")
 find_package(catkin REQUIRED
     COMPONENTS
       diagnostic_updater
@@ -23,7 +24,7 @@ catkin_package(
     LIBRARIES sick_tim_3xx
     INCLUDE_DIRS include)
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${libusb_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${libusb_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 add_library(sick_tim_3xx
     src/sick_tim_common.cpp
@@ -63,6 +64,14 @@ add_executable(sick_mrs1000
   src/scan_and_cloud_parser.cpp
   src/sick_mrs1000_parser.cpp)
 target_link_libraries(sick_mrs1000 sick_tim_3xx)
+
+add_executable(sick_multiple_mrs1000
+  src/sick_multiple_mrs1000.cpp
+  src/sick_mrs1000_communication.cpp
+  src/sick_tim_common_tcp.cpp
+  src/scan_and_cloud_parser.cpp
+  src/sick_mrs1000_parser.cpp)
+target_link_libraries(sick_multiple_mrs1000 sick_tim_3xx ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 
 add_executable(sick_tim_datagram_test
     test/sick_tim_datagram_test.cpp

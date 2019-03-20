@@ -51,6 +51,23 @@ SickMrs1000Communication::SickMrs1000Communication(const std::string &hostname,
   expectedFrequency_ = 12.5; // by data sheet 50 Hz, 4 x 12,5 Hz
 }
 
+SickMrs1000Communication::SickMrs1000Communication(const std::string &hostname,
+                                                   const std::string &port,
+                                                   int &timelimit,
+                                                   ScanAndCloudParser* parser,
+                                                   const std::string &scan_topic_name,
+                                                   const std::string &cloud_topic_name)
+: SickTimCommonTcp(hostname, port, timelimit, parser, scan_topic_name),
+  scan_and_cloud_parser_(parser),
+  cloud_pub_(nh_.advertise<sensor_msgs::PointCloud2>(cloud_topic_name, 300)),
+  diagnosed_cloud_publisher_(cloud_pub_, diagnostics_,
+    diagnostic_updater::FrequencyStatusParam(&expectedFrequency_, &expectedFrequency_, 0.1, 10),
+    diagnostic_updater::TimeStampStatusParam(-1, 1.3 * 1.0/expectedFrequency_ - config_.time_offset)
+  )
+{
+  expectedFrequency_ = 12.5; // by data sheet 50 Hz, 4 x 12,5 Hz
+}
+
 SickMrs1000Communication::~SickMrs1000Communication()
 {
 
@@ -100,6 +117,81 @@ int SickMrs1000Communication::loopOnce()
     dstart++;
     sensor_msgs::PointCloud2 cloud;
     int success = scan_and_cloud_parser_->parse_datagram(dstart, dlength, config_, scan, cloud);
+
+    if (success == ExitSuccess)
+    {
+
+      /*
+       * cloud.header.frame_id == "" means we're still accumulating
+       * the layers of the point cloud, so don't publish yet.
+       */
+      if(cloud.header.frame_id != "")
+      {
+        ROS_DEBUG_STREAM("Publish cloud with " << cloud.height * cloud.width
+          << " points in the frame \"" << cloud.header.frame_id << "\".");
+        diagnosed_cloud_publisher_.publish(cloud);
+      }
+
+      /*
+       * scan.header.frame_id == "" means the laser scan was of a layer
+       * different than layer 0, so don't publish it (because the points
+       * don't lie in a plane)
+       */
+      if(scan.header.frame_id != "")
+      {
+        diagnosticPub_->publish(scan);
+      }
+
+    }
+    buffer_pos = dend + 1;
+  }
+
+  return ExitSuccess; // return success to continue looping
+}
+
+int SickMrs1000Communication::loopOnce(sick_tim::SickTimConfig& config_data)
+{
+  diagnostics_.update();
+
+  unsigned char receiveBuffer[65536];
+  int actual_length = 0;
+  static unsigned int iteration_count = 0;
+
+  int result = get_datagram(receiveBuffer, 65536, &actual_length);
+  if (result != 0)
+  {
+    ROS_ERROR("Read Error when getting datagram: %i.", result);
+    diagnostics_.broadcast(diagnostic_msgs::DiagnosticStatus::ERROR, "Read Error when getting datagram.");
+    return ExitError; // return failure to exit node
+  }
+  if(actual_length <= 0)
+    return ExitSuccess; // return success to continue looping
+
+  // ----- if requested, skip frames
+  if (iteration_count++ % (config_.skip + 1) != 0)
+    return ExitSuccess;
+
+  if (publish_datagram_)
+  {
+    std_msgs::String datagram_msg;
+    datagram_msg.data = std::string(reinterpret_cast<char*>(receiveBuffer));
+    datagram_pub_.publish(datagram_msg);
+  }
+
+  sensor_msgs::LaserScan scan;
+
+  /*
+   * datagrams are enclosed in <STX> (0x02), <ETX> (0x03) pairs
+   */
+  char* buffer_pos = (char*)receiveBuffer;
+  char *dstart, *dend;
+  while( (dstart = strchr(buffer_pos, 0x02)) && (dend = strchr(dstart + 1, 0x03)) )
+  {
+    size_t dlength = dend - dstart;
+    *dend = '\0';
+    dstart++;
+    sensor_msgs::PointCloud2 cloud;
+    int success = scan_and_cloud_parser_->parse_datagram(dstart, dlength, config_data, scan, cloud);
 
     if (success == ExitSuccess)
     {

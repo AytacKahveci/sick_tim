@@ -52,8 +52,15 @@ class SickMrs1000Communication : public SickTimCommonTcp
                            const std::string &port,
                            int &timelimit,
                            ScanAndCloudParser *parser);
+  SickMrs1000Communication(const std::string &hostname,
+                           const std::string &port,
+                           int &timelimit,
+                           ScanAndCloudParser *parser,
+                           const std::string &topic_name,
+                           const std::string &cloud_topic_name);
   virtual ~SickMrs1000Communication();
   virtual int loopOnce();
+  virtual int loopOnce(sick_tim::SickTimConfig& config_data);
 
  protected:
   ros::NodeHandle nh_;

@@ -58,6 +58,22 @@ SickTimCommonTcp::SickTimCommonTcp(const std::string &hostname, const std::strin
     checkDeadline();
 }
 
+SickTimCommonTcp::SickTimCommonTcp(const std::string &hostname, const std::string &port, int &timelimit, AbstractParser* parser, const std::string& topic_name)
+:
+    SickTimCommon(parser, topic_name),
+    socket_(io_service_),
+    deadline_(io_service_),
+    hostname_(hostname),
+    port_(port),
+    timelimit_(timelimit)
+{
+    // Set up the deadline actor to implement timeouts.
+    // Based on blocking TCP example on:
+    // http://www.boost.org/doc/libs/1_46_0/doc/html/boost_asio/example/timeouts/blocking_tcp_client.cpp
+    deadline_.expires_at(boost::posix_time::pos_infin);
+    checkDeadline();
+}
+
 SickTimCommonTcp::~SickTimCommonTcp()
 {
   stop_scanner();

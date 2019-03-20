@@ -70,6 +70,32 @@ SickTimCommon::SickTimCommon(AbstractParser* parser) :
   ROS_ASSERT(diagnosticPub_ != NULL);
 }
 
+SickTimCommon::SickTimCommon(AbstractParser* parser, const std::string& topic_name) :
+    diagnosticPub_(NULL), expectedFrequency_(15.0), parser_(parser)
+    // FIXME All Tims have 15Hz?
+{
+  dynamic_reconfigure::Server<sick_tim::SickTimConfig>::CallbackType f;
+  f = boost::bind(&sick_tim::SickTimCommon::update_config, this, _1, _2);
+  dynamic_reconfigure_server_.setCallback(f);
+
+  // datagram publisher (only for debug)
+  ros::NodeHandle pn("~");
+  pn.param<bool>("publish_datagram", publish_datagram_, false);
+  if (publish_datagram_)
+    datagram_pub_ = nh_.advertise<std_msgs::String>("datagram", 1000);
+
+  // scan publisher
+  pub_ = nh_.advertise<sensor_msgs::LaserScan>(topic_name, 1000);
+
+  diagnostics_.setHardwareID("none");   // set from device after connection
+  diagnosticPub_ = new diagnostic_updater::DiagnosedPublisher<sensor_msgs::LaserScan>(pub_, diagnostics_,
+          // frequency should be target +- 10%.
+          diagnostic_updater::FrequencyStatusParam(&expectedFrequency_, &expectedFrequency_, 0.1, 10),
+          // timestamp delta can be from 0.0 to 1.3x what it ideally is.
+          diagnostic_updater::TimeStampStatusParam(-1, 1.3 * 1.0/expectedFrequency_ - config_.time_offset));
+  ROS_ASSERT(diagnosticPub_ != NULL);
+}
+
 int SickTimCommon::stop_scanner()
 {
   /*
