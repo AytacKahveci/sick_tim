@@ -50,8 +50,8 @@ int readThread(sick_tim::SickTimCommon* s, const std::string& hostname, sick_tim
 
     ros::Time prev = ros::Time::now();
     result = s->loopOnce(conf);
-    double duration = (ros::Time::now() - prev).to_sec();
-    ROS_INFO("Duration: %f", duration);
+    double duration = (ros::Time::now() - prev).toSec();
+    ROS_INFO_STREAM("Thread id:" << boost::this_thread::get_id() << "Duration: " << duration);
     if (result == sick_tim::ExitFatal)
     { 
       ROS_INFO_STREAM("Thread id:" << boost::this_thread::get_id() << "is returned with ExitFatal flag. Hostname: " << hostname);
