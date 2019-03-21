@@ -363,6 +363,56 @@ int SickTimCommon::loopOnce()
   return ExitSuccess; // return success to continue looping
 }
 
+int SickTimCommon::loopOnce(sick_tim::SickTimConfig& config_data)
+{
+  diagnostics_.update();
+
+  unsigned char receiveBuffer[65536];
+  int actual_length = 0;
+  static unsigned int iteration_count = 0;
+
+  int result = get_datagram(receiveBuffer, 65536, &actual_length);
+  if (result != 0)
+  {
+      ROS_ERROR("Read Error when getting datagram: %i.", result);
+      diagnostics_.broadcast(diagnostic_msgs::DiagnosticStatus::ERROR, "Read Error when getting datagram.");
+      return ExitError; // return failure to exit node
+  }
+  if(actual_length <= 0)
+      return ExitSuccess; // return success to continue looping
+
+  // ----- if requested, skip frames
+  if (iteration_count++ % (config_data.skip + 1) != 0)
+    return ExitSuccess;
+
+  if (publish_datagram_)
+  {
+    std_msgs::String datagram_msg;
+    datagram_msg.data = std::string(reinterpret_cast<char*>(receiveBuffer));
+    datagram_pub_.publish(datagram_msg);
+  }
+
+  sensor_msgs::LaserScan msg;
+
+  /*
+   * datagrams are enclosed in <STX> (0x02), <ETX> (0x03) pairs
+   */
+  char* buffer_pos = (char*)receiveBuffer;
+  char *dstart, *dend;
+  while( (dstart = strchr(buffer_pos, 0x02)) && (dend = strchr(dstart + 1, 0x03)) )
+  {
+    size_t dlength = dend - dstart;
+    *dend = '\0';
+    dstart++;
+    int success = parser_->parse_datagram(dstart, dlength, config_data, msg);
+    if (success == ExitSuccess)
+      diagnosticPub_->publish(msg);
+    buffer_pos = dend + 1;
+  }
+
+  return ExitSuccess; // return success to continue looping
+}
+
 void SickTimCommon::check_angle_range(SickTimConfig &conf)
 {
   if (conf.min_ang > conf.max_ang)

@@ -70,7 +70,7 @@ public:
   virtual ~SickTimCommon();
   virtual int init();
   virtual int loopOnce();
-  virtual int loopOnce(sick_tim::SickTimConfig& config_data) = 0;
+  virtual int loopOnce(sick_tim::SickTimConfig& config_data);
   void check_angle_range(SickTimConfig &conf);
   void update_config(sick_tim::SickTimConfig &new_config, uint32_t level = 0);
 

@@ -48,8 +48,10 @@ int readThread(sick_tim::SickTimCommon* s, const std::string& hostname, sick_tim
     boost::this_thread::interruption_point();
     int result = sick_tim::ExitError;
 
+    ros::Time prev = ros::Time::now();
     result = s->loopOnce(conf);
-
+    double duration = (ros::Time::now() - prev).to_sec();
+    ROS_INFO("Duration: %f", duration);
     if (result == sick_tim::ExitFatal)
     { 
       ROS_INFO_STREAM("Thread id:" << boost::this_thread::get_id() << "is returned with ExitFatal flag. Hostname: " << hostname);
@@ -82,7 +84,7 @@ int main(int argc, char **argv)
   std::string port;
   nhPriv.param<std::string>("port", port, "2112");
 
-  std::vector<sick_tim::SickMRS1000Parser*> parser;
+  std::vector<sick_tim::SickMRS1000Parser*> parser(num_device);
   for(int i = 0; i < num_device; ++i)
   { 
     parser[i] = new sick_tim::SickMRS1000Parser();
@@ -149,7 +151,7 @@ int main(int argc, char **argv)
 
   for(int i = 0; i < num_device; ++i)
   {
-    s[i] = new sick_tim::SickMrs1000Communication(hostname[i], port, timelimit, parser[i]);
+    s[i] = new sick_tim::SickMrs1000Communication(hostname[i], port, timelimit, parser[i], scan_topic_names[i], cloud_topic_names[i]);
 
     result = s[i]->init();
 

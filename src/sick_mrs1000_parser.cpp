@@ -174,6 +174,7 @@ int SickMRS1000Parser::parse_datagram(char* datagram, size_t datagram_length, Si
   sscanf(fields[17], "%hx", &measurement_freq);
   // Measurement Frequency = Inverse of the time between two measurement shots -> 275 * 4 / 20ms = 55kHz
   scan.time_increment = 1.0 / (4 * measurement_freq * 100.0);
+  override_time_increment_ = 0.000000139;
   if (override_time_increment_ > 0.0)
   {
     // Some lasers may report incorrect measurement frequency
@@ -325,14 +326,14 @@ int SickMRS1000Parser::parse_datagram(char* datagram, size_t datagram_length, Si
 
   // ----- adjust start time
   // - last scan point = now  ==>  first scan point = now - number_of_data * time increment
-  scan.header.stamp = start_time - ros::Duration().fromSec(number_of_data * scan.time_increment);
+  // scan.header.stamp = start_time - ros::Duration().fromSec(number_of_data * scan.time_increment);
 
-  // - shift forward to time of first published scan point
-  scan.header.stamp += ros::Duration().fromSec((double)index_min * scan.time_increment);
+  // // - shift forward to time of first published scan point
+  // scan.header.stamp += ros::Duration().fromSec((double)index_min * scan.time_increment);
 
-  // - add time offset (to account for USB latency etc.)
-  scan.header.stamp += ros::Duration().fromSec(current_config_.time_offset);
-
+  // // - add time offset (to account for USB latency etc.)
+  // scan.header.stamp += ros::Duration().fromSec(current_config_.time_offset);
+  scan.header.stamp = ros::Time::now();
   // ----- consistency check
   float expected_time_increment = scan.scan_time * scan.angle_increment / (2.0 * M_PI);
   if (fabs(expected_time_increment - scan.time_increment) > 0.00001)
